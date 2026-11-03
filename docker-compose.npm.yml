@@ -1,0 +1,15 @@
+# Attach Play Station to the docker network Nginx Proxy Manager already uses.
+# Find the name with: docker network ls
+# Set NPM_NETWORK in .env, then:
+#   docker compose -f docker-compose.yml -f docker-compose.npm.yml up -d --build
+
+services:
+  play-station:
+    networks:
+      - default
+      - npm
+
+networks:
+  npm:
+    external: true
+    name: ${NPM_NETWORK:?Set NPM_NETWORK to the docker network Nginx Proxy Manager is on}

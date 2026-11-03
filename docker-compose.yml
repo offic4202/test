@@ -1,0 +1,51 @@
+# Production container for a VPS.
+# The app speaks HTTP only. Nginx Proxy Manager terminates TLS.
+#
+# Same machine as Nginx Proxy Manager (usual):
+#   docker compose -f docker-compose.yml -f docker-compose.npm.yml up -d --build
+#   Proxy host: http://play-station:47231
+#
+# Proxy on another machine, reached over WireGuard:
+#   BIND_ADDRESS=10.8.0.1 docker compose -f docker-compose.yml -f docker-compose.wireguard.yml up -d --build
+#   Proxy host: http://10.8.0.1:47231
+#
+# Do not run this and docker-compose.dev.yml at the same time. Both use the
+# container name play-station, which is the hostname the proxy host should use.
+
+services:
+  play-station:
+    build: .
+    image: play-station:local
+    container_name: play-station
+    restart: unless-stopped
+    init: true
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      NODE_ENV: production
+      PORT: "47231"
+      HOSTNAME: 0.0.0.0
+      DATA_DIR: /app/data
+      STATION_SECRET: ${STATION_SECRET:-}
+      DESK_PASSWORD: ${DESK_PASSWORD:-}
+      SITE_DOMAIN: ${SITE_DOMAIN:-playstation.9ja.space}
+    volumes:
+      - station-data:/app/data
+    expose:
+      - "47231"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:47231/api/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+volumes:
+  station-data:

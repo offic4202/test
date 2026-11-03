@@ -1,0 +1,8 @@
+# Publish the container only on the VPS WireGuard address, so the public NIC
+# does not listen. Set BIND_ADDRESS in .env to that private address.
+#   docker compose -f docker-compose.yml -f docker-compose.wireguard.yml up -d --build
+
+services:
+  play-station:
+    ports:
+      - "${BIND_ADDRESS:?Set BIND_ADDRESS to the WireGuard address}:${HOST_PORT:-47231}:47231"

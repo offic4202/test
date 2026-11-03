@@ -1,0 +1,52 @@
+# Development container. Edit the repo on the host; this process reloads.
+# Same container name as production, so a proxy host can stay pointed at
+# http://play-station:47231 while you work. Stop the production container first.
+#
+# On the VPS, next to Nginx Proxy Manager:
+#   docker compose -f docker-compose.dev.yml -f docker-compose.npm.yml up
+# Turn Websockets Support on for that proxy host so the dev reload socket works.
+#
+# Over WireGuard only:
+#   docker compose -f docker-compose.dev.yml -f docker-compose.wireguard.yml up
+#
+# On a laptop, with no .env, the port is published on 127.0.0.1:47231.
+
+services:
+  play-station:
+    image: node:22-bookworm-slim
+    container_name: play-station
+    working_dir: /app
+    init: true
+    command: sh -c "if [ ! -x node_modules/.bin/next ]; then npm ci; fi && npm run dev"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      PORT: "47231"
+      HOSTNAME: 0.0.0.0
+      DATA_DIR: /app/data
+      WATCHPACK_POLLING: "true"
+      ALLOWED_DEV_ORIGINS: ${ALLOWED_DEV_ORIGINS:-127.0.0.1,playstation.9ja.space}
+      STATION_SECRET: ${STATION_SECRET:-}
+      DESK_PASSWORD: ${DESK_PASSWORD:-}
+      SITE_DOMAIN: ${SITE_DOMAIN:-playstation.9ja.space}
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${HOST_PORT:-47231}:47231"
+    volumes:
+      - .:/app
+      - station-modules:/app/node_modules
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:47231/api/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 8s
+      retries: 8
+      start_period: 120s
+
+volumes:
+  station-modules:
